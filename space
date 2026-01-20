@@ -1,0 +1,893 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Play, Pause, RefreshCw, MousePointer2, Menu, X, 
+  Atom, Activity, ChevronRight, Info, Waves, BrickWall, Droplets, Eraser,
+  Music, Volume2, VolumeX, PanelLeftClose, PanelLeftOpen, BookOpen, Circle,
+  Infinity as InfinityIcon, Shuffle, Hand
+} from 'lucide-react';
+
+/**
+ * ==========================================
+ * UTILS: Resize Observer Hook
+ * ==========================================
+ */
+const useContainerDimensions = (ref) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new ResizeObserver((entries) => {
+      if (!Array.isArray(entries) || !entries.length) return;
+      const entry = entries[0];
+      setDimensions({
+        width: Math.floor(entry.contentRect.width),
+        height: Math.floor(entry.contentRect.height)
+      });
+    });
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return dimensions;
+};
+
+/**
+ * ==========================================
+ * MODUL 1: Wellen Interferenz
+ * ==========================================
+ */
+const WaveInterference = () => {
+  const [frequency, setFrequency] = useState(10);
+  const [amplitude, setAmplitude] = useState(50);
+  const [phaseOffset, setPhaseOffset] = useState(0);
+  const [isRunning, setIsRunning] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(true);
+  
+  const [internalRes, setInternalRes] = useState({ w: 400, h: 400 });
+
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const containerRef = useRef(null);
+  const containerSize = useContainerDimensions(containerRef);
+  
+  const [sources, setSources] = useState([{ x: 0.35, y: 0.5 }, { x: 0.65, y: 0.5 }]);
+  const [draggingSource, setDraggingSource] = useState(null);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    if (containerSize.width === 0 || containerSize.height === 0) return;
+    const maxDimension = 450; 
+    const aspect = containerSize.width / containerSize.height;
+    let w, h;
+    if (aspect > 1) { w = maxDimension; h = Math.floor(maxDimension / aspect); } 
+    else { h = maxDimension; w = Math.floor(maxDimension * aspect); }
+    setInternalRes({ w, h });
+  }, [containerSize]);
+
+  const renderFrame = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    if (canvas.width !== internalRes.w || canvas.height !== internalRes.h) {
+        canvas.width = internalRes.w; canvas.height = internalRes.h;
+    }
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const { w: width, h: height } = internalRes;
+    if (width === 0 || height === 0) return;
+
+    const imgData = ctx.createImageData(width, height);
+    const buffer32 = new Uint32Array(imgData.data.buffer);
+
+    const t = timeRef.current;
+    const k = frequency * 0.05; 
+    const wFreq = frequency * 0.2;  
+    const maxAmp = amplitude * 2; 
+    const phaseRad = phaseOffset * Math.PI / 180;
+
+    const sx1 = sources[0].x * width; const sy1 = sources[0].y * height;
+    const sx2 = sources[1].x * width; const sy2 = sources[1].y * height;
+
+    for (let y = 0; y < height; y++) {
+      const rowOffset = y * width;
+      const dy1 = y - sy1; const dy2 = y - sy2;
+      const dy1Sq = dy1 * dy1; const dy2Sq = dy2 * dy2;
+
+      for (let x = 0; x < width; x++) {
+        const dx1 = x - sx1; const dx2 = x - sx2;
+        const dist1 = Math.sqrt(dx1 * dx1 + dy1Sq);
+        const dist2 = Math.sqrt(dx2 * dx2 + dy2Sq);
+
+        const wave1 = amplitude * Math.sin(dist1 * k - t * wFreq);
+        const wave2 = amplitude * Math.sin(dist2 * k - t * wFreq + phaseRad);
+
+        let intensity = (wave1 + wave2) / (maxAmp || 1); 
+        if (intensity > 1) intensity = 1;
+        if (intensity < -1) intensity = -1;
+
+        let r, g, b;
+        if (intensity > 0) {
+            r = (intensity * 200) | 0; g = (100 + intensity * 155) | 0; b = (200 + intensity * 55) | 0;
+        } else {
+            const absInt = Math.abs(intensity);
+            r = 0; g = (100 - absInt * 80) | 0; b = (200 - absInt * 150) | 0;
+        }
+        buffer32[rowOffset + x] = (255 << 24) | (b << 16) | (g << 8) | r;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+
+    sources.forEach((source) => {
+      const sx = source.x * width; const sy = source.y * height;
+      ctx.beginPath(); ctx.arc(sx, sy, 4, 0, Math.PI * 2); ctx.fillStyle = '#FFD700'; ctx.fill(); ctx.stroke();
+    });
+
+    if (isRunning) {
+      // SLOWER: Reduced time increment from 0.5 to 0.1
+      timeRef.current += 0.1;
+      animationRef.current = requestAnimationFrame(renderFrame);
+    }
+  }, [internalRes, frequency, amplitude, phaseOffset, sources, isRunning]);
+
+  useEffect(() => {
+    animationRef.current = requestAnimationFrame(renderFrame);
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [renderFrame]);
+
+  const handleInteraction = (clientX, clientY, type) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    let x = (clientX - rect.left) / rect.width;
+    let y = (clientY - rect.top) / rect.height;
+    x = Math.max(0, Math.min(1, x)); y = Math.max(0, Math.min(1, y));
+
+    if (type === 'start') {
+      const threshold = 0.1; 
+      const dist1 = Math.sqrt(Math.pow(x - sources[0].x, 2) + Math.pow(y - sources[0].y, 2));
+      const dist2 = Math.sqrt(Math.pow(x - sources[1].x, 2) + Math.pow(y - sources[1].y, 2));
+      if (dist1 < threshold) setDraggingSource(0);
+      else if (dist2 < threshold) setDraggingSource(1);
+      setShowOverlay(false);
+    } else if (type === 'move' && draggingSource !== null) {
+      setSources(prev => { const n = [...prev]; n[draggingSource] = { x, y }; return n; });
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-black text-slate-100 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
+      <header className="h-10 sm:h-12 px-4 bg-slate-900/50 backdrop-blur border-b border-slate-800 flex items-center gap-2 shrink-0">
+        <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+        <h1 className="text-sm font-bold text-slate-300">Wellen Interferenz</h1>
+      </header>
+
+      <div className="flex-1 relative bg-black overflow-hidden group min-h-0">
+            <div 
+              ref={containerRef}
+              className="w-full h-full cursor-crosshair touch-none select-none"
+              onMouseDown={(e) => handleInteraction(e.clientX, e.clientY, 'start')}
+              onMouseMove={(e) => handleInteraction(e.clientX, e.clientY, 'move')}
+              onMouseUp={() => setDraggingSource(null)}
+              onMouseLeave={() => setDraggingSource(null)}
+              onTouchStart={(e) => handleInteraction(e.touches[0].clientX, e.touches[0].clientY, 'start')}
+              onTouchMove={(e) => handleInteraction(e.touches[0].clientX, e.touches[0].clientY, 'move')}
+              onTouchEnd={() => setDraggingSource(null)}
+            >
+              <canvas ref={canvasRef} className="w-full h-full block" style={{ imageRendering: 'pixelated' }} />
+              {showOverlay && (<div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-black/60 px-4 py-2 rounded-full border border-cyan-500/30 flex items-center gap-2 backdrop-blur-sm animate-bounce"><MousePointer2 className="text-cyan-400" size={16} /><span className="text-cyan-100 text-sm">Quellen verschieben</span></div></div>)}
+            </div>
+      </div>
+
+      <div className="bg-slate-900 border-t border-slate-800 p-3 sm:p-4 shrink-0 z-10 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-4 min-w-[300px]">
+          <div className="flex items-center gap-2 mr-2">
+             <button onClick={() => setIsRunning(!isRunning)} className={`p-2 rounded-lg transition-colors ${isRunning ? 'bg-amber-600/20 text-amber-500 hover:bg-amber-600/40' : 'bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600/40'}`}>{isRunning ? <Pause size={18} /> : <Play size={18} />}</button>
+             <button onClick={() => { setSources([{ x: 0.35, y: 0.5 }, { x: 0.65, y: 0.5 }]); setFrequency(10); setPhaseOffset(0); setAmplitude(50); }} className="p-2 bg-slate-800 text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-colors"><RefreshCw size={18} /></button>
+          </div>
+          <div className="flex-1 grid grid-cols-3 gap-3">
+            <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500">Freq</label><input type="range" min="2" max="30" value={frequency} onChange={(e) => setFrequency(Number(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-full appearance-none accent-cyan-500" /></div>
+            <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500">Amp</label><input type="range" min="10" max="100" value={amplitude} onChange={(e) => setAmplitude(Number(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-full appearance-none accent-cyan-500" /></div>
+            <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500">Phase</label><input type="range" min="0" max="360" step="45" value={phaseOffset} onChange={(e) => setPhaseOffset(Number(e.target.value))} className="w-full h-1.5 bg-slate-700 rounded-full appearance-none accent-purple-500" /></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * ==========================================
+ * MODUL 2: Huygenssche Wellenwanne
+ * ==========================================
+ */
+const RippleTank = () => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const containerSize = useContainerDimensions(containerRef); 
+
+  const [mode, setMode] = useState('wave'); 
+  const [strength, setStrength] = useState(400);
+  const [isRunning, setIsRunning] = useState(true);
+  
+  const simulationRef = useRef({ width: 0, height: 0, buffer1: null, buffer2: null, obstacles: null });
+  const requestRef = useRef(null);
+  const isMouseDownRef = useRef(false);
+
+  // Resize & Buffer Allocation
+  useEffect(() => {
+    if (containerSize.width === 0 || containerSize.height === 0) return;
+    const base = 250; const aspect = containerSize.width / containerSize.height;
+    let newW, newH;
+    if (aspect > 1) { newW = Math.floor(base * aspect); newH = base; } else { newW = base; newH = Math.floor(base / aspect); }
+    if (newW > 450) { newW = 450; newH = Math.floor(450/aspect); }
+
+    if (simulationRef.current.width !== newW || simulationRef.current.height !== newH) {
+        const size = newW * newH;
+        simulationRef.current = {
+            width: newW, height: newH,
+            buffer1: new Float32Array(size), buffer2: new Float32Array(size), obstacles: new Uint8Array(size)
+        };
+        if (canvasRef.current) { canvasRef.current.width = newW; canvasRef.current.height = newH; }
+    }
+  }, [containerSize]);
+
+  // Loop
+  useEffect(() => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const damping = 0.985;
+
+    const loop = () => {
+      if (!isRunning) { requestRef.current = requestAnimationFrame(loop); return; }
+      const { width, height, buffer1, buffer2, obstacles } = simulationRef.current;
+      if (!width) { requestRef.current = requestAnimationFrame(loop); return; }
+
+      const imgData = ctx.createImageData(width, height);
+      const buf32 = new Uint32Array(imgData.data.buffer);
+
+      for (let y = 1; y < height - 1; y++) {
+        const rOff = y * width; const uOff = (y-1)*width; const lOff = (y+1)*width;
+        for (let x = 1; x < width - 1; x++) {
+          const i = rOff + x;
+          if (obstacles[i] === 1) { buffer2[i] = 0; continue; }
+          const val = (buffer1[i - 1] + buffer1[i + 1] + buffer1[uOff + x] + buffer1[lOff + x]) / 2 - buffer2[i];
+          buffer2[i] = val * damping;
+        }
+      }
+      const temp = buffer1; simulationRef.current.buffer1 = buffer2; simulationRef.current.buffer2 = temp;
+      
+      const len = width * height;
+      for (let i = 0; i < len; i++) {
+        if (obstacles[i] === 1) { buf32[i] = 0xFF32C8FF; continue; }
+        const val = buffer2[i]; const intensity = val * 20; 
+        let r=0, g=20, b=60;
+        if (intensity > 0) { r = Math.min(255, r + intensity * 2)|0; g = Math.min(255, g + intensity * 4)|0; b = Math.min(255, b + intensity * 8)|0; } 
+        else { r = Math.max(0, r + intensity)|0; g = Math.max(0, g + intensity)|0; b = Math.max(0, b + intensity)|0; }
+        buf32[i] = (255 << 24) | (b << 16) | (g << 8) | r;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      requestRef.current = requestAnimationFrame(loop);
+    };
+    requestRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [isRunning]);
+
+  const clearWater = () => { if(simulationRef.current.buffer1) simulationRef.current.buffer1.fill(0); if(simulationRef.current.buffer2) simulationRef.current.buffer2.fill(0); };
+  const clearWalls = () => { if(simulationRef.current.obstacles) simulationRef.current.obstacles.fill(0); };
+  
+  const presetSlit = () => {
+    clearWalls(); clearWater();
+    const { width, height, obstacles } = simulationRef.current;
+    if(!width) return;
+    const midX = (width / 2) | 0; const gapSize = 8;
+    for (let y = 0; y < height; y++) {
+        if (y < height/2 - gapSize || y > height/2 + gapSize) {
+             const idx = y * width + midX; if(idx < obstacles.length) { obstacles[idx] = 1; obstacles[idx+1] = 1; obstacles[idx-1] = 1; }
+        }
+    }
+    createDisturbance(midX - 20, height / 2, 1000); setMode('wave');
+  };
+
+  const createDisturbance = (x, y, amp) => {
+    const { width, height, buffer1, obstacles } = simulationRef.current;
+    if (!width) return;
+    if (x > 1 && x < width - 1 && y > 1 && y < height - 1) {
+        const radius = 2;
+        for(let dy = -radius; dy <= radius; dy++) for(let dx = -radius; dx <= radius; dx++) {
+            const index = (y+dy) * width + (x+dx); if (index >= 0 && index < buffer1.length && obstacles[index] === 0) buffer1[index] += amp; 
+        }
+    }
+  };
+
+  const createWall = (x, y) => {
+      const { width, obstacles, buffer1, buffer2 } = simulationRef.current;
+      if (!width) return;
+      const radius = 2;
+      for(let dy = -radius; dy <= radius; dy++) for(let dx = -radius; dx <= radius; dx++) {
+          const index = (y+dy) * width + (x+dx); if (index >= 0 && index < obstacles.length) { obstacles[index] = 1; buffer1[index] = 0; buffer2[index] = 0; }
+      }
+  };
+
+  const handleInput = (cx, cy) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const { width, height } = simulationRef.current;
+    const x = Math.floor(((cx - rect.left) / rect.width) * width);
+    const y = Math.floor(((cy - rect.top) / rect.height) * height);
+    if (mode === 'wave') createDisturbance(x, y, strength); else createWall(x, y);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-black text-slate-100 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
+      <header className="h-10 sm:h-12 px-4 bg-slate-900/50 backdrop-blur border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><h1 className="text-sm font-bold text-slate-300">Wellenwanne</h1></div>
+        <div className="flex gap-2">
+            <button title="Wasser glätten" onClick={clearWater} className="p-1.5 hover:bg-slate-700 rounded text-slate-400"><Eraser size={14}/></button>
+            <button title="Wände löschen" onClick={clearWalls} className="p-1.5 hover:bg-slate-700 rounded text-slate-400"><RefreshCw size={14}/></button>
+        </div>
+      </header>
+      <div className="flex-1 relative bg-black touch-none min-h-0" ref={containerRef}>
+         <canvas ref={canvasRef} className="w-full h-full cursor-crosshair block" style={{ imageRendering: 'pixelated' }}
+            onMouseDown={(e) => { isMouseDownRef.current = true; handleInput(e.clientX, e.clientY); }}
+            onMouseMove={(e) => { if (isMouseDownRef.current) handleInput(e.clientX, e.clientY); }}
+            onMouseUp={() => { isMouseDownRef.current = false; }} onMouseLeave={() => { isMouseDownRef.current = false; }}
+            onTouchStart={(e) => { isMouseDownRef.current = true; handleInput(e.touches[0].clientX, e.touches[0].clientY); }}
+            onTouchMove={(e) => { if (isMouseDownRef.current) handleInput(e.touches[0].clientX, e.touches[0].clientY); }}
+            onTouchEnd={() => { isMouseDownRef.current = false; }}
+         />
+      </div>
+      <div className="bg-slate-900 border-t border-slate-800 p-3 shrink-0 overflow-x-auto">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between min-w-[300px]">
+            <div className="flex gap-2 w-full sm:w-auto justify-center sm:justify-start">
+                <button onClick={() => setMode('wave')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${mode === 'wave' ? 'bg-blue-600/20 border-blue-600/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><Waves size={14} /> Wellen</button>
+                <button onClick={() => setMode('wall')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${mode === 'wall' ? 'bg-amber-600/20 border-amber-600/50 text-amber-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><BrickWall size={14} /> Wände</button>
+            </div>
+            <div className="flex flex-1 items-center gap-4 w-full sm:w-auto">
+                <label className="text-[10px] uppercase font-bold text-slate-500 whitespace-nowrap">Kraft</label>
+                <input type="range" min="100" max="1000" step="50" value={strength} onChange={(e) => setStrength(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-full appearance-none accent-blue-500" />
+                <button onClick={presetSlit} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-300 transition-colors whitespace-nowrap">Spalt</button>
+            </div>
+          </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * ==========================================
+ * MODUL 3: Schwebung & Phasoren
+ * ==========================================
+ */
+const BeatsPhasor = () => {
+    const canvasRef = useRef(null);
+    const containerRef = useRef(null);
+    const containerSize = useContainerDimensions(containerRef);
+    
+    const [f1, setF1] = useState(2.0);
+    const [f2, setF2] = useState(2.2);
+    // SLOWER: Start speed reduced from 1.0 to 0.5
+    const [speed, setSpeed] = useState(0.5);
+    const [isPaused, setIsPaused] = useState(false);
+    
+    const timeRef = useRef(0);
+    const reqRef = useRef(null);
+
+    const drawArrow = (ctx, x1, y1, x2, y2, color, width = 2) => {
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        const angle = Math.atan2(y2 - y1, x2 - x1); const headLen = 8;
+        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.fill();
+    };
+
+    const drawGraph = (ctx, offsetY, freq, color, amp, label, startX, width, time) => {
+        ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2;
+        ctx.save(); ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(startX, offsetY); ctx.lineTo(startX + width, offsetY); ctx.stroke(); ctx.restore();
+        for (let x = 0; x < width; x++) {
+            const yVal = Math.sin(2 * Math.PI * freq * (time - x * 0.01)) * amp;
+            if (x === 0) ctx.moveTo(startX, offsetY - yVal); else ctx.lineTo(startX + x, offsetY - yVal);
+        }
+        ctx.stroke(); ctx.fillStyle = color; ctx.font = "12px sans-serif"; ctx.fillText(label, startX + 10, offsetY - amp - 5);
+    };
+
+    useEffect(() => {
+        const canvas = canvasRef.current; if (!canvas || containerSize.width === 0) return;
+        canvas.width = containerSize.width; canvas.height = containerSize.height;
+        const ctx = canvas.getContext('2d');
+        const vW = 1000; const vH = 500; const scale = Math.min(canvas.width / vW, canvas.height / vH);
+        const offsetX = (canvas.width - vW * scale) / 2; const offsetY = (canvas.height - vH * scale) / 2;
+
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save(); ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
+            ctx.fillStyle = "#0f172a"; ctx.fillRect(0,0,vW, vH);
+
+            const center = { x: 150, y: 250 }; const graphX = 350; const graphW = 600; const amp = 40; const t = timeRef.current;
+            const a1 = 2 * Math.PI * f1 * t; const a2 = 2 * Math.PI * f2 * t;
+            const x1 = Math.cos(a1)*amp; const y1 = -Math.sin(a1)*amp;
+            const x2 = Math.cos(a2)*amp; const y2 = -Math.sin(a2)*amp;
+            const xSum = x1 + x2; const ySum = y1 + y2;
+
+            // Phasor Circle
+            ctx.beginPath(); ctx.strokeStyle = "#334155"; ctx.arc(center.x, center.y, amp * 2.2, 0, Math.PI * 2); ctx.stroke();
+            // Vectors
+            drawArrow(ctx, center.x, center.y, center.x + x1, center.y + y1, "#f87171", 3); 
+            drawArrow(ctx, center.x + x1, center.y + y1, center.x + xSum, center.y + ySum, "#38bdf8", 2); 
+            drawArrow(ctx, center.x, center.y, center.x + xSum, center.y + ySum, "#a855f7", 4); 
+
+            // Graphs
+            drawGraph(ctx, 100, f1, "#f87171", amp, "Welle 1", graphX, graphW, t);
+            drawGraph(ctx, 250, f2, "#38bdf8", amp, "Welle 2", graphX, graphW, t);
+            
+            // Sum Graph
+            const sumY = 400;
+            ctx.beginPath(); ctx.strokeStyle = "#a855f7"; ctx.lineWidth = 2;
+            ctx.save(); ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(graphX, sumY); ctx.lineTo(graphX + graphW, sumY); ctx.stroke(); ctx.restore();
+            for (let x = 0; x < graphW; x++) {
+                const tp = t - x * 0.01;
+                const val = (Math.sin(2 * Math.PI * f1 * tp) + Math.sin(2 * Math.PI * f2 * tp)) * amp;
+                if (x === 0) ctx.moveTo(graphX, sumY - val); else ctx.lineTo(graphX + x, sumY - val);
+            }
+            ctx.stroke();
+            ctx.fillStyle = "#a855f7"; ctx.font = "12px sans-serif"; ctx.fillText("Summe", graphX + 10, sumY - (2*amp) - 5);
+
+            // Projection
+            ctx.setLineDash([2, 4]); ctx.lineWidth = 1; ctx.strokeStyle = "#a855f7"; 
+            ctx.beginPath(); ctx.moveTo(center.x + xSum, center.y + ySum); ctx.lineTo(graphX, sumY + ySum); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = "#a855f7"; ctx.beginPath(); ctx.arc(graphX, sumY + ySum, 4, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
+            if (!isPaused) { timeRef.current += 0.01 * speed; }
+            reqRef.current = requestAnimationFrame(animate);
+        };
+        reqRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(reqRef.current);
+    }, [f1, f2, speed, isPaused, containerSize]);
+
+    return (
+        <div className="flex flex-col h-full bg-black text-slate-100 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
+             <header className="h-10 sm:h-12 px-4 bg-slate-900/50 backdrop-blur border-b border-slate-800 flex items-center gap-2 shrink-0">
+                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span><h1 className="text-sm font-bold text-slate-300">Schwebung</h1>
+            </header>
+            <div className="flex-1 relative bg-black min-h-0" ref={containerRef}><canvas ref={canvasRef} className="block w-full h-full" /></div>
+            <div className="bg-slate-900 border-t border-slate-800 p-3 shrink-0 overflow-x-auto">
+                <div className="flex flex-col sm:flex-row gap-4 items-center min-w-[300px]">
+                    <button onClick={() => setIsPaused(!isPaused)} className={`p-2 rounded-lg transition-colors ${!isPaused ? 'bg-slate-800 text-slate-400 hover:text-white' : 'bg-emerald-600/20 text-emerald-500'}`}>{isPaused ? <Play size={18} /> : <Pause size={18} />}</button>
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                        <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500 flex justify-between">Freq 1 <span className="text-red-400">{f1.toFixed(1)}</span></label><input type="range" min="0.5" max="5.0" step="0.1" value={f1} onChange={(e) => setF1(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-full accent-red-400" /></div>
+                        <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500 flex justify-between">Freq 2 <span className="text-sky-400">{f2.toFixed(1)}</span></label><input type="range" min="0.5" max="5.0" step="0.1" value={f2} onChange={(e) => setF2(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-full accent-sky-400" /></div>
+                        <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500 flex justify-between">Speed <span className="text-slate-300">{speed.toFixed(1)}x</span></label><input type="range" min="0" max="3.0" step="0.1" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full h-1 bg-slate-700 rounded-full accent-slate-400" /></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * ==========================================
+ * MODUL 4: Gitarren Tuner (Vollständig & Gefixt)
+ * ==========================================
+ */
+const GuitarTuner = () => {
+    const canvasRef = useRef(null);
+    const containerRef = useRef(null);
+    const dimensions = useContainerDimensions(containerRef);
+    const [f1, setF1] = useState(396);
+    const [f2, setF2] = useState(370);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const audioCtxRef = useRef(null);
+    const oscRef = useRef([]);
+
+    useEffect(() => {
+        if(isPlaying) {
+            audioCtxRef.current = new (window.AudioContext||window.webkitAudioContext)();
+            const ctx = audioCtxRef.current;
+            const g = ctx.createGain(); g.gain.value = 0.1; g.connect(ctx.destination);
+            [f1, f2].forEach((f, i) => {
+                const o = ctx.createOscillator(); o.frequency.value = f; o.connect(g); o.start();
+                oscRef.current[i] = o;
+            });
+        } else {
+            oscRef.current.forEach(o => { try{o.stop()}catch{} });
+            if(audioCtxRef.current) audioCtxRef.current.close();
+        }
+        return () => { oscRef.current.forEach(o => { try{o.stop()}catch{} }); if(audioCtxRef.current) audioCtxRef.current.close(); };
+    }, [isPlaying]);
+
+    useEffect(() => {
+        if(isPlaying && oscRef.current[0]) {
+             oscRef.current[0].frequency.setValueAtTime(f1, audioCtxRef.current.currentTime);
+             oscRef.current[1].frequency.setValueAtTime(f2, audioCtxRef.current.currentTime);
+        }
+    }, [f1, f2, isPlaying]);
+
+    useEffect(() => {
+        const c = canvasRef.current; if(!c || !dimensions.width) return;
+        c.width = dimensions.width; c.height = dimensions.height;
+        const ctx = c.getContext('2d');
+        const w = c.width; const h = c.height; const cy = h/2;
+        
+        ctx.fillStyle="#0f172a"; ctx.fillRect(0,0,w,h);
+        
+        // FIX: Richtiges Zoom-Level für Beats. Wir zeigen ca. 0.2 Sekunden an.
+        // Das reicht, um eine Schwebung von ~5Hz (Periode 0.2s) oder mehr zu sehen.
+        const timeWindow = 0.2; // Sekunden
+        const maxAmp = h / 3;
+
+        ctx.beginPath(); ctx.strokeStyle="#38bdf8"; ctx.lineWidth=2;
+        for(let x=0; x<w; x++) {
+            const t = (x / w) * timeWindow; // Mapping x pixel to time
+            // Physics: sin(2 * PI * f * t)
+            const y1 = Math.sin(2 * Math.PI * f1 * t);
+            const y2 = Math.sin(2 * Math.PI * f2 * t);
+            // Summe (normalisiert durch 2)
+            const ySum = (y1 + y2) * 0.5;
+            ctx.lineTo(x, cy - ySum * maxAmp);
+        }
+        ctx.stroke();
+
+        // Envelope (Hüllkurve) - cos(PI * (f1-f2) * t)
+        ctx.beginPath(); ctx.strokeStyle="rgba(248,113,113,0.5)"; ctx.setLineDash([5,5]);
+        for(let x=0; x<w; x++) {
+            const t = (x / w) * timeWindow; 
+            const envelope = Math.cos(Math.PI * (f1-f2) * t);
+            ctx.lineTo(x, cy - Math.abs(envelope) * maxAmp);
+        }
+        ctx.stroke();
+    }, [dimensions, f1, f2]);
+
+    return (
+        <div className="flex flex-col h-full bg-black text-slate-100 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
+            <div className="flex-1 relative" ref={containerRef}>
+                <canvas ref={canvasRef} className="block w-full h-full"/>
+                <div className="absolute top-4 right-4 bg-black/50 p-2 rounded text-[10px] text-slate-400 border border-slate-700">
+                    Zoom: 0.2s Fenster
+                </div>
+                <button onClick={()=>setIsPlaying(!isPlaying)} className={`absolute bottom-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-bold flex items-center gap-2 ${isPlaying?'bg-red-500 text-white':'bg-cyan-600 text-white'}`}>
+                    {isPlaying?<VolumeX size={18}/>:<Volume2 size={18}/>} {isPlaying?'Stop':'Start'}
+                </button>
+            </div>
+            <div className="p-4 border-t border-slate-800 grid grid-cols-2 gap-6 bg-slate-900">
+                <div><label className="text-xs font-bold text-slate-500">Saite 1 ({f1}Hz)</label><input type="range" min="300" max="500" value={f1} onChange={e=>setF1(Number(e.target.value))} className="w-full accent-cyan-500"/></div>
+                <div><label className="text-xs font-bold text-slate-500">Saite 2 ({f2}Hz)</label><input type="range" min="300" max="500" value={f2} onChange={e=>setF2(Number(e.target.value))} className="w-full accent-red-500"/></div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * ==========================================
+ * MODUL 5: Gravitation & Stoß (Vollständig & Bunt)
+ * ==========================================
+ */
+const GravitySim = () => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const dimensions = useContainerDimensions(containerRef);
+  
+  // SLOWER: Reduced gravity default from 0.5 to 0.2
+  const [gravity, setGravity] = useState(0.2);
+  const [elasticity, setElasticity] = useState(0.8);
+  const ballsRef = useRef([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if(!canvas || dimensions.width === 0) return;
+    canvas.width = dimensions.width; canvas.height = dimensions.height;
+    
+    if(ballsRef.current.length === 0) {
+        for(let i=0; i<5; i++) ballsRef.current.push({
+            x: dimensions.width/2, y: dimensions.height/3, 
+            vx: Math.random()*10-5, vy: 0, 
+            r: 10+Math.random()*15, c: `hsl(${Math.random()*360},70%,60%)`
+        });
+    }
+
+    const ctx = canvas.getContext('2d');
+    let id;
+    const loop = () => {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.4)'; ctx.fillRect(0,0, canvas.width, canvas.height);
+      
+      ballsRef.current.forEach(b => {
+        b.vy += gravity;
+        b.x += b.vx; b.y += b.vy;
+        
+        if(b.y + b.r > canvas.height) { b.y = canvas.height - b.r; b.vy *= -elasticity; }
+        if(b.x + b.r > canvas.width) { b.x = canvas.width - b.r; b.vx *= -elasticity; }
+        if(b.x - b.r < 0) { b.x = b.r; b.vx *= -elasticity; }
+
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fillStyle = b.c; ctx.fill();
+      });
+      id = requestAnimationFrame(loop);
+    };
+
+    const click = (e) => {
+        const r = canvas.getBoundingClientRect();
+        // FIX: Random size and color for new balls
+        ballsRef.current.push({
+            x: e.clientX-r.left, 
+            y: e.clientY-r.top, 
+            vx: Math.random()*10-5, 
+            vy: Math.random()*10-5, 
+            r: 10 + Math.random()*20, // Random radius 10-30
+            c: `hsl(${Math.random()*360}, 70%, 60%)` // Random color
+        });
+    };
+    canvas.addEventListener('mousedown', click);
+    loop();
+    return () => { canvas.removeEventListener('mousedown', click); cancelAnimationFrame(id); };
+  }, [gravity, elasticity, dimensions]);
+
+  return (
+    <div className="flex flex-col h-full bg-slate-900 rounded-xl overflow-hidden border border-slate-800">
+       <div className="flex-1 relative cursor-crosshair min-h-0" ref={containerRef}>
+          <canvas ref={canvasRef} className="block" />
+          <div className="absolute top-4 left-4 pointer-events-none text-xs text-slate-400 bg-black/50 p-2 rounded">Klicken für mehr Bälle</div>
+       </div>
+       <div className="h-16 bg-slate-950 flex items-center px-4 gap-8 border-t border-slate-800 shrink-0">
+          <div className="flex-1 space-y-1">
+             <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase"><span>Gravitation</span><span>{gravity}</span></div>
+             <input type="range" min="0" max="1.5" step="0.05" value={gravity} onChange={e => setGravity(parseFloat(e.target.value))} className="w-full h-1 bg-slate-800 rounded-full accent-blue-500"/>
+          </div>
+          <div className="flex-1 space-y-1">
+             <div className="flex justify-between text-[10px] text-slate-500 font-bold uppercase"><span>Elastizität</span><span>{elasticity}</span></div>
+             <input type="range" min="0.1" max="1.2" step="0.05" value={elasticity} onChange={e => setElasticity(parseFloat(e.target.value))} className="w-full h-1 bg-slate-800 rounded-full accent-pink-500"/>
+          </div>
+       </div>
+    </div>
+  );
+};
+
+/**
+ * ==========================================
+ * MODUL 6: Doppelpendel (Interaktiv)
+ * ==========================================
+ */
+const DoublePendulum = () => {
+    const canvasRef = useRef(null); 
+    const containerRef = useRef(null); 
+    const dimensions = useContainerDimensions(containerRef);
+    const s = useRef({th1:Math.PI/2, th2:Math.PI/2, v1:0, v2:0, path:[]}); 
+    const req = useRef(null);
+    const dragRef = useRef({ active: false, mass: 0 }); // 0 = none, 1 = m1, 2 = m2
+
+    // SLOWER: Reduced gravity constant for simulation
+    const SIM_G = 0.4; 
+
+    useEffect(()=>{
+        const c=canvasRef.current; if(!c||!dimensions.width)return; 
+        c.width=dimensions.width; c.height=dimensions.height; 
+        const ctx=c.getContext('2d'); 
+        const cx=c.width/2; const cy=c.height/3; 
+        const l1=100; const l2=100; // lengths
+
+        const loop=()=>{
+            let {th1,th2,v1,v2,path}=s.current;
+            
+            // Only update physics if NOT dragging
+            if (!dragRef.current.active) {
+                const g = SIM_G; 
+                const num1=-g*(20+10)*Math.sin(th1)-10*g*Math.sin(th1-2*th2)-2*Math.sin(th1-th2)*10*(v2**2*100+v1**2*100*Math.cos(th1-th2));
+                const den1=100*(20+10-10*Math.cos(2*th1-2*th2)); const a1=num1/den1;
+                const num2=2*Math.sin(th1-th2)*(v1**2*100*(20)+g*(20)*Math.cos(th1)+v2**2*100*10*Math.cos(th1-th2));
+                const den2=100*(20+10-10*Math.cos(2*th1-2*th2)); const a2=num2/den2;
+                v1+=a1; v2+=a2; th1+=v1; th2+=v2; v1*=0.999; v2*=0.999;
+            } else {
+                // If dragging, reset velocities so it doesn't fly away when released
+                v1 = 0; v2 = 0;
+            }
+
+            const x1=l1*Math.sin(th1), y1=l1*Math.cos(th1);
+            const x2=x1+l2*Math.sin(th2), y2=y1+l2*Math.cos(th2);
+            
+            // Only trace path if moving fast enough or not dragging
+            if(!dragRef.current.active) {
+                path.push({x:x2,y:y2}); if(path.length>200)path.shift(); 
+            } else {
+                path = []; // Clear path on drag
+            }
+            
+            s.current={th1,th2,v1,v2,path};
+
+            // Render
+            ctx.fillStyle="#0f172a"; ctx.fillRect(0,0,c.width,c.height); 
+            ctx.translate(cx,cy);
+            
+            ctx.beginPath(); ctx.strokeStyle="rgba(236,72,153,0.5)"; 
+            path.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y)}); 
+            ctx.stroke();
+
+            ctx.beginPath(); ctx.strokeStyle="#cbd5e1"; ctx.lineWidth=2;
+            ctx.moveTo(0,0); ctx.lineTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+
+            ctx.fillStyle="#38bdf8"; ctx.beginPath(); ctx.arc(x1,y1,12,0,Math.PI*2); ctx.fill(); // Bigger interaction target
+            ctx.fillStyle="#ec4899"; ctx.beginPath(); ctx.arc(x2,y2,12,0,Math.PI*2); ctx.fill();
+
+            ctx.translate(-cx,-cy); 
+            req.current=requestAnimationFrame(loop);
+        }; 
+        req.current=requestAnimationFrame(loop); 
+        return ()=>cancelAnimationFrame(req.current);
+    },[dimensions]);
+
+    // FIX: Interactive Mouse Handlers for Pendulum
+    const handleMouseDown = (e) => {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mx = e.clientX - rect.left - dimensions.width/2;
+        const my = e.clientY - rect.top - dimensions.height/3;
+        const {th1, th2} = s.current;
+        const l1=100, l2=100;
+        
+        const x1=l1*Math.sin(th1), y1=l1*Math.cos(th1);
+        const x2=x1+l2*Math.sin(th2), y2=y1+l2*Math.cos(th2);
+
+        const d1 = Math.sqrt((mx-x1)**2 + (my-y1)**2);
+        const d2 = Math.sqrt((mx-x2)**2 + (my-y2)**2);
+
+        if (d2 < 30) dragRef.current = {active: true, mass: 2};
+        else if (d1 < 30) dragRef.current = {active: true, mass: 1};
+    };
+
+    const handleMouseMove = (e) => {
+        if (!dragRef.current.active) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mx = e.clientX - rect.left - dimensions.width/2;
+        const my = e.clientY - rect.top - dimensions.height/3;
+        
+        if (dragRef.current.mass === 1) {
+            s.current.th1 = Math.atan2(mx, my);
+        } else if (dragRef.current.mass === 2) {
+            // Need to calculate th2 relative to m1
+            const l1=100;
+            const x1=l1*Math.sin(s.current.th1);
+            const y1=l1*Math.cos(s.current.th1);
+            s.current.th2 = Math.atan2(mx-x1, my-y1);
+        }
+    };
+
+    const handleMouseUp = () => { dragRef.current = {active: false, mass: 0}; };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-900 rounded-xl overflow-hidden">
+            <div className="flex-1 relative cursor-pointer" ref={containerRef}>
+                <canvas 
+                    ref={canvasRef} 
+                    className="block w-full h-full"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                />
+                <button onClick={()=>{s.current={th1:Math.PI/2,th2:Math.PI/2,v1:0,v2:0,path:[]}}} className="absolute top-4 right-4 bg-slate-800 p-2 rounded text-white"><RefreshCw size={16}/></button>
+                {dragRef.current && (
+                    <div className="absolute top-4 left-4 bg-black/50 p-2 rounded text-xs text-slate-400 pointer-events-none flex items-center gap-2">
+                        <Hand size={12}/> Ziehe die Massen
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+/**
+ * ==========================================
+ * MODUL 7: Lissajous
+ * ==========================================
+ */
+const Lissajous = () => {
+    const canvasRef = useRef(null); const containerRef = useRef(null); const dimensions = useContainerDimensions(containerRef);
+    const [a, setA] = useState(3); const [b, setB] = useState(2); const [delta, setDelta] = useState(90); const [speed, setSpeed] = useState(0.2); // SLOWER Default
+    const timeRef = useRef(0); const reqRef = useRef(null);
+    useEffect(() => {
+        const c = canvasRef.current; if (!c || !dimensions.width) return; c.width = dimensions.width; c.height = dimensions.height;
+        const ctx = c.getContext('2d'); const cx = c.width/2; const cy = c.height/2; const s = Math.min(cx,cy)-20;
+        const loop = () => {
+            timeRef.current += 0.01 * speed;
+            ctx.fillStyle = "rgba(15, 23, 42, 0.2)"; ctx.fillRect(0,0, c.width, c.height);
+            ctx.beginPath(); ctx.lineWidth = 3; ctx.strokeStyle = "#4ade80";
+            for(let i=0; i<=500; i++) {
+                const t = (i/500)*2*Math.PI; const x = Math.sin(a*t + delta*Math.PI/180 + timeRef.current*0.1); const y = Math.sin(b*t);
+                if(i===0) ctx.moveTo(cx+x*s, cy+y*s); else ctx.lineTo(cx+x*s, cy+y*s);
+            }
+            ctx.stroke(); reqRef.current = requestAnimationFrame(loop);
+        };
+        reqRef.current = requestAnimationFrame(loop); return () => cancelAnimationFrame(reqRef.current);
+    }, [a,b,delta,speed,dimensions]);
+    return (<div className="flex flex-col h-full bg-slate-900 rounded-xl overflow-hidden"><div className="flex-1 relative" ref={containerRef}><canvas ref={canvasRef} className="block w-full h-full"/></div><div className="bg-slate-950 p-4 border-t border-slate-800 grid grid-cols-4 gap-2"><input type="range" min="1" max="10" value={a} onChange={e=>setA(Number(e.target.value))} className="accent-green-400"/><input type="range" min="1" max="10" value={b} onChange={e=>setB(Number(e.target.value))} className="accent-green-400"/><input type="range" min="0" max="360" value={delta} onChange={e=>setDelta(Number(e.target.value))} className="accent-blue-400"/><input type="range" min="0" max="5" step="0.1" value={speed} onChange={e=>setSpeed(Number(e.target.value))} className="accent-slate-400"/></div></div>);
+};
+
+/**
+ * ==========================================
+ * DATA STRUCTURE & MAIN SHELL
+ * ==========================================
+ */
+const MODULES = [
+  { id: 'waves', title: 'Interferenz', category: 'Wellenlehre', icon: Waves, component: WaveInterference, color: 'text-cyan-400', desc: 'Überlagerung zweier Wellenquellen. Erforsche konstruktive und destruktive Interferenz.' },
+  { id: 'ripple', title: 'Wellenwanne', category: 'Wellenoptik', icon: Droplets, component: RippleTank, color: 'text-blue-400', desc: 'Numerische Wellensimulation. Beobachte Beugung, Reflexion und das Huygenssche Prinzip.' },
+  { id: 'beats', title: 'Phasoren', category: 'Akustik', icon: Activity, component: BeatsPhasor, color: 'text-purple-400', desc: 'Visualisierung von Schwebungen mittels rotierender Zeiger (Phasoren).' },
+  { id: 'tuner', title: 'Gitarren-Tuner', category: 'Akustik', icon: Music, component: GuitarTuner, color: 'text-red-400', desc: 'Hörbare Schwebung zweier Frequenzen. Ideal zum Verstehen von Stimmvorgängen.' },
+  { id: 'gravity', title: 'Elastischer Stoß', category: 'Mechanik', icon: Circle, component: GravitySim, color: 'text-emerald-400', desc: 'Klassische Mechanik: Stoßgesetze und Gravitation in einem Partikelsystem.' },
+  { id: 'pendulum', title: 'Doppelpendel', category: 'Chaos', icon: Shuffle, component: DoublePendulum, color: 'text-pink-400', desc: 'Ein einfaches mechanisches System mit komplexem, chaotischem Verhalten.' },
+  { id: 'lissajous', title: 'Lissajous', category: 'Schwingungen', icon: InfinityIcon, component: Lissajous, color: 'text-green-400', desc: 'Überlagerung harmonischer Schwingungen in zwei Dimensionen.' }
+];
+
+const LandingPage = ({ onSelect }) => (
+  <div className="h-full overflow-y-auto bg-slate-950 p-6 md:p-12">
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-12 text-center">
+        <div className="inline-block p-4 rounded-2xl bg-slate-900 border border-slate-800 mb-6 shadow-2xl shadow-cyan-900/20"><Atom size={64} className="text-cyan-500" /></div>
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight">Physik<span className="text-cyan-500">Lab</span></h1>
+        <p className="text-lg text-slate-400 max-w-2xl mx-auto">Eine interaktive Sammlung moderner Physik-Simulationen. Entdecke Wellenmechanik, Akustik und Chaostheorie direkt im Browser.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {MODULES.map((m) => (
+          <button key={m.id} onClick={() => onSelect(m.id)} className="group relative bg-slate-900 border border-slate-800 rounded-2xl p-6 text-left hover:border-slate-600 transition-all hover:shadow-2xl hover:shadow-slate-900/50 hover:-translate-y-1 overflow-hidden">
+            <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${m.color}`}><m.icon size={120} /></div>
+            <div className={`w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center mb-4 ${m.color} group-hover:scale-110 transition-transform`}><m.icon size={24} /></div>
+            <h3 className="text-xl font-bold text-white mb-1">{m.title}</h3><p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">{m.category}</p><p className="text-sm text-slate-400 mb-6">{m.desc}</p>
+            <div className="flex items-center text-sm font-medium text-white group-hover:text-cyan-400 transition-colors">Starten <ChevronRight size={16} className="ml-1" /></div>
+          </button>
+        ))}
+      </div>
+      <footer className="mt-20 pt-8 border-t border-slate-900 text-center text-slate-600 text-sm"><p>&copy; {new Date().getFullYear()} PhysikLab. Bereit für Deployment.</p></footer>
+    </div>
+  </div>
+);
+
+export default function PhysicsLab() {
+  const [activeModuleId, setActiveModuleId] = useState(null);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showInfoPanel, setShowInfoPanel] = useState(true);
+  useEffect(() => { document.title = activeModuleId ? `${MODULES.find(m=>m.id===activeModuleId).title} - PhysikLab` : "PhysikLab"; }, [activeModuleId]);
+  const activeModule = MODULES.find(m => m.id === activeModuleId);
+
+  return (
+    <div className="fixed inset-0 w-full h-full bg-black text-slate-200 font-sans selection:bg-cyan-500/30 overflow-hidden flex flex-col">
+      <header className="h-14 bg-slate-950 border-b border-slate-800 flex items-center px-4 justify-between shrink-0 z-30">
+        <div className="flex items-center gap-3">
+            <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-white"><Menu size={20} /></button>
+            <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="hidden lg:flex p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">{isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}</button>
+            <div className="flex items-center gap-3 ml-2 cursor-pointer" onClick={() => setActiveModuleId(null)}>
+                <div className="w-8 h-8 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-900/20"><Atom className="text-white" size={20} /></div>
+                <div className="hidden sm:block"><h1 className="font-bold text-white tracking-tight leading-none">PhysikLab</h1></div>
+            </div>
+        </div>
+        {activeModule && ( <button onClick={() => setShowInfoPanel(!showInfoPanel)} className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showInfoPanel ? 'bg-slate-800 text-cyan-400' : 'text-slate-400 hover:text-white'}`}><BookOpen size={16} /> Info</button> )}
+      </header>
+      <div className="flex-1 flex overflow-hidden relative">
+        {isMobileMenuOpen && (<div className="fixed inset-0 bg-black/80 z-40 lg:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}/>)}
+        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-950 border-r border-slate-800 transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:transform-none lg:translate-x-0 ${isSidebarOpen ? 'lg:w-72' : 'lg:w-0 lg:border-r-0 lg:overflow-hidden'}`}>
+           <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1 w-72">
+             <div className="px-3 mb-2 text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center justify-between">Bibliothek <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden text-slate-500"><X size={16}/></button></div>
+             {MODULES.map((module) => (
+               <button key={module.id} onClick={() => { setActiveModuleId(module.id); setMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 group ${activeModuleId === module.id ? 'bg-slate-800 text-cyan-400 shadow-md border border-slate-700/50' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}>
+                 <div className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${activeModuleId === module.id ? 'bg-cyan-500/10' : 'bg-slate-900'}`}><module.icon size={16} className={activeModuleId === module.id ? module.color : 'text-slate-600'} /></div>
+                 <div className="flex-1 text-left"><div className="font-medium">{module.title}</div><div className="text-[10px] opacity-60 font-light">{module.category}</div></div>
+                 {activeModuleId === module.id && <ChevronRight size={14} />}
+               </button>
+             ))}
+           </div>
+        </aside>
+        <main className="flex-1 flex flex-col min-w-0 bg-slate-950/50 relative overflow-hidden">
+          {!activeModuleId ? ( <LandingPage onSelect={setActiveModuleId} /> ) : (
+            <div className="flex-1 flex flex-col lg:flex-row h-full w-full overflow-hidden">
+              <div className={`relative bg-black flex flex-col min-h-0 order-1 lg:order-1 transition-all duration-300 ${showInfoPanel ? 'lg:flex-1 h-[60%] lg:h-full' : 'flex-1 h-full'}`}>
+                 <div className="flex-1 relative w-full h-full min-h-0"><activeModule.component /></div>
+              </div>
+              <div className={`bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col shrink-0 z-10 order-2 lg:order-2 transition-all duration-300 ease-in-out overflow-hidden ${showInfoPanel ? 'h-[40%] lg:h-full w-full lg:w-80 opacity-100' : 'h-0 lg:h-full lg:w-0 lg:border-l-0 opacity-0 pointer-events-none'}`}>
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar w-full lg:w-80">
+                  <div className="flex items-center gap-2 mb-4"><span className={`px-2 py-1 bg-slate-900 ${activeModule.color} text-[10px] font-bold uppercase rounded border border-slate-800`}>{activeModule.category}</span></div>
+                  <h2 className="text-xl font-bold text-white mb-4">{activeModule.title}</h2>
+                  <div className="prose prose-invert prose-sm text-slate-300 leading-relaxed text-sm"><p>{activeModule.desc}</p></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
