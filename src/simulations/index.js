@@ -1,4 +1,4 @@
-import { Waves, Droplets, Activity, Music, Circle, Shuffle, Infinity as InfinityIcon } from 'lucide-react';
+import { Waves, Droplets, Activity, Music, Circle, Shuffle, Infinity as InfinityIcon, Radio } from 'lucide-react';
 
 import WaveInterference from './WaveInterference';
 import RippleTank from './RippleTank';
@@ -7,6 +7,7 @@ import GuitarTuner from './GuitarTuner';
 import GravitySim from './GravitySim';
 import DoublePendulum from './DoublePendulum';
 import Lissajous from './Lissajous';
+import FourierSynthesis from './FourierSynthesis';
 
 const MODULES = [
   { id: 'waves', title: 'Interferenz', category: 'Wellenlehre', icon: Waves, component: WaveInterference, color: 'text-cyan-400', desc: 'Überlagerung zweier Wellenquellen. Erforsche konstruktive und destruktive Interferenz.' },
@@ -15,7 +16,8 @@ const MODULES = [
   { id: 'tuner', title: 'Gitarren-Tuner', category: 'Akustik', icon: Music, component: GuitarTuner, color: 'text-red-400', desc: 'Hörbare Schwebung zweier Frequenzen. Ideal zum Verstehen von Stimmvorgängen.' },
   { id: 'gravity', title: 'Elastischer Stoß', category: 'Mechanik', icon: Circle, component: GravitySim, color: 'text-emerald-400', desc: 'Klassische Mechanik: Stoßgesetze und Gravitation in einem Partikelsystem.' },
   { id: 'pendulum', title: 'Doppelpendel', category: 'Chaos', icon: Shuffle, component: DoublePendulum, color: 'text-pink-400', desc: 'Ein einfaches mechanisches System mit komplexem, chaotischem Verhalten.' },
-  { id: 'lissajous', title: 'Lissajous', category: 'Schwingungen', icon: InfinityIcon, component: Lissajous, color: 'text-green-400', desc: 'Überlagerung harmonischer Schwingungen in zwei Dimensionen.' }
+  { id: 'lissajous', title: 'Lissajous', category: 'Schwingungen', icon: InfinityIcon, component: Lissajous, color: 'text-green-400', desc: 'Überlagerung harmonischer Schwingungen in zwei Dimensionen.' },
+  { id: 'fourier', title: 'Fourier-Synthese', category: 'Schwingungen', icon: Radio, component: FourierSynthesis, color: 'text-cyan-400', desc: 'Addiere harmonische Obertöne und beobachte, wie aus Sinuswellen komplexe Wellenformen (Rechteck, Sägezahn, Dreieck) entstehen. Fourier-Reihen visuell erlebbar.' },
 ];
 
 export { MODULES };
