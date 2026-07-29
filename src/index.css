@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: #000;
+    overscroll-behavior: none;
+  }
+
+  /* Bei appearance:none entfernen Browser den Schieberegler-Knopf komplett und
+     ignorieren accent-color. Daher hier ein eigener Thumb als Basis-Stil. */
+  input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: #334155;
+    cursor: pointer;
+  }
+
+  input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 0.875rem;
+    width: 0.875rem;
+    border-radius: 9999px;
+    background-color: #e2e8f0;
+    box-shadow: 0 0 0 1px #0f172a;
+  }
+
+  input[type='range']::-moz-range-thumb {
+    height: 0.875rem;
+    width: 0.875rem;
+    border: none;
+    border-radius: 9999px;
+    background-color: #e2e8f0;
+  }
+}
+
+@layer components {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: #334155;
+  }
+}
