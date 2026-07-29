@@ -37,6 +37,7 @@ Touch-Eingaben.
 
 ```
 PhysicsLab/
+├── .github/workflows/deploy.yml      Build und Deployment auf GitHub Pages
 ├── index.html                        Einstiegs-HTML, lädt src/main.jsx
 ├── package.json                      Abhängigkeiten und npm-Skripte
 ├── vite.config.js                    Vite-Konfiguration (React, Tailwind, base-Pfad)
@@ -84,11 +85,12 @@ npm run preview   # den Build lokal ausliefern
 
 ## Live-Demo
 
-Aktuell ist keine Live-Demo veröffentlicht. Das Projekt ist dafür aber vorbereitet: In
-`vite.config.js` steht `base: '/PhysicsLab/'`, sodass ein Build direkt unter
-`https://florianalternativ-cmyk.github.io/PhysicsLab/` funktioniert. Zum Veröffentlichen
-genügt es, in den Repository-Einstellungen unter *Settings → Pages* GitHub Pages zu
-aktivieren und den Inhalt von `dist/` zu publizieren.
+**<https://florianalternativ-cmyk.github.io/PhysicsLab/>**
+
+Das Deployment läuft automatisch: Bei jedem Push auf `main` baut der Workflow
+`.github/workflows/deploy.yml` das Projekt und veröffentlicht den Inhalt von `dist/` über
+GitHub Pages. Passend dazu steht in `vite.config.js` `base: '/PhysicsLab/'`, damit die
+Asset-Pfade unter dem Unterverzeichnis von Pages aufgelöst werden.
 
 ## Lizenz
 
