@@ -1,6 +1,6 @@
 # PhysikLab
 
-Eine interaktive Sammlung von Physik-Simulationen für den Browser. Sieben Module aus
+Eine interaktive Sammlung von Physik-Simulationen für den Browser. Acht Module aus
 Wellenlehre, Akustik, Mechanik und Chaostheorie lassen sich in Echtzeit über Schieberegler
 und direkte Maus- bzw. Touch-Eingabe verändern.
 
@@ -18,6 +18,7 @@ keine fertige Physik- oder Grafik-Engine zum Einsatz.
 | **Elastischer Stoß** | Mechanik | Partikelsystem unter konstanter Gravitation. Die Kugeln stoßen mit einem einstellbaren Restitutionskoeffizienten gegen Boden und Seitenwände – von stark gedämpft bis energiegewinnend. Per Klick kommen neue Kugeln dazu. |
 | **Doppelpendel** | Chaos | Die Bewegungsgleichungen des Doppelpendels, Schritt für Schritt integriert. Die Bahn der unteren Masse wird nachgezeichnet und macht das chaotische Verhalten sichtbar. Beide Massen lassen sich mit der Maus in eine neue Startlage ziehen. |
 | **Lissajous** | Schwingungen | Lissajous-Figuren aus der Überlagerung zweier harmonischer Schwingungen: `x = sin(a·t + δ)`, `y = sin(b·t)`. Frequenzverhältnis, Phasenlage und Animationsgeschwindigkeit sind regelbar. |
+| **Fourier-Synthese** | Schwingungen | Addiere bis zu 8 harmonische Obertöne mit individueller Amplitude und Phase. Rotierende Phasor-Kette, Wellenform-Verlauf aller Harmonischen und Echtzeit-Spektrum-Balkendiagramm. Presets für Sinus, Rechteck, Sägezahn und Dreieck. |
 
 Alle Module sind responsiv: Über einen `ResizeObserver` wird die Canvas-Auflösung an die
 Fenstergröße angepasst, und die Wellen- sowie Wellenwannen-Simulation reagieren auch auf
@@ -57,7 +58,8 @@ PhysicsLab/
         ├── GuitarTuner.jsx           Hörbare Schwebung, Gitarren-Tuner
         ├── GravitySim.jsx            Gravitation und Stöße an Wänden
         ├── DoublePendulum.jsx        Chaotisches Doppelpendel
-        └── Lissajous.jsx             Lissajous-Figuren
+        ├── Lissajous.jsx             Lissajous-Figuren
+        └── FourierSynthesis.jsx   Fourier-Synthese mit Phasoren und Spektrum
 ```
 
 Ein neues Modul lässt sich hinzufügen, indem man eine Komponente unter `src/simulations/`
