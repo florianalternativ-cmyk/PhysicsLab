@@ -1,4 +1,4 @@
-import { Waves, Droplets, Activity, Music, Circle, Shuffle, Infinity as InfinityIcon, Radio, GitBranch } from 'lucide-react';
+import { Waves, Droplets, Activity, Music, Circle, Shuffle, Infinity as InfinityIcon, Radio, GitBranch, Globe } from 'lucide-react';
 
 import WaveInterference from './WaveInterference';
 import RippleTank from './RippleTank';
@@ -9,6 +9,7 @@ import DoublePendulum from './DoublePendulum';
 import Lissajous from './Lissajous';
 import FourierSynthesis from './FourierSynthesis';
 import LorenzAttractor from './LorenzAttractor';
+import NBodyGravity from './NBodyGravity';
 
 const MODULES = [
   { id: 'waves',    title: 'Interferenz',      category: 'Wellenlehre',  icon: Waves,         component: WaveInterference, color: 'text-cyan-400',    desc: '\u00dcberlagerung zweier Wellenquellen. Erforsche konstruktive und destruktive Interferenz.' },
@@ -20,6 +21,7 @@ const MODULES = [
   { id: 'lissajous',title: 'Lissajous',        category: 'Schwingungen', icon: InfinityIcon,  component: Lissajous,        color: 'text-green-400',   desc: '\u00dcberlagerung harmonischer Schwingungen in zwei Dimensionen.' },
   { id: 'fourier',  title: 'Fourier-Synthese', category: 'Schwingungen', icon: Radio,         component: FourierSynthesis, color: 'text-cyan-400',    desc: 'Addiere harmonische Obert\u00f6ne und beobachte, wie aus Sinuswellen komplexe Wellenformen entstehen.' },
   { id: 'lorenz',   title: 'Lorenz-Attraktor', category: 'Chaos',        icon: GitBranch,     component: LorenzAttractor,  color: 'text-fuchsia-400', desc: 'Deterministisches Chaos in 3D. Drehe den Attraktor frei, passe \u03c3, \u03c1, \u03b2 an und beobachte den Schmetterlingseffekt.' },
+  { id: 'nbody',    title: 'N-Körper-Gravitation', category: 'Mechanik', icon: Globe,         component: NBodyGravity,     color: 'text-yellow-400',  desc: 'N-Körper-Gravitationssimulation mit symplektischem Leapfrog-Integrator. Figur-8-Drei\u00f6rper-L\u00f6sung, Doppelstern und Sonnensystem als Presets. Neue K\u00f6rper per Klick/Ziehen spawnen, Gravitation, Zeitskala und Masse live einstellen.' },
 ];
 
 export { MODULES };
