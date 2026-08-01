@@ -25,7 +25,7 @@
 
   body {
     margin: 0;
-    background: radial-gradient(circle at top, rgba(79,127,255,0.06), transparent 32%), var(--bg-deep);
+    background: var(--bg-deep);
     color: var(--text-primary);
     overscroll-behavior: none;
     font-feature-settings: 'ss01' on, 'cv01' on;
@@ -81,16 +81,11 @@
     width: 7px;
     height: 7px;
   }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb {
     border-radius: 9999px;
     background: rgba(255, 255, 255, 0.09);
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.18);
   }
@@ -111,14 +106,6 @@
     -webkit-backdrop-filter: blur(18px);
   }
 
-  .hairline {
-    border-color: rgba(255,255,255,0.06);
-  }
-
-  .muted-ring {
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
-  }
-
   .accent-glow {
     box-shadow: 0 0 0 1px rgba(79,127,255,0.22), 0 0 40px rgba(79,127,255,0.14);
   }
@@ -128,7 +115,6 @@
     transform: translateY(24px);
     transition: opacity 700ms ease, transform 700ms ease;
   }
-
   .section-reveal.is-visible {
     opacity: 1;
     transform: translateY(0);
@@ -138,7 +124,6 @@
     position: relative;
     overflow: hidden;
   }
-
   .animated-outline::before {
     content: '';
     position: absolute;
@@ -146,9 +131,7 @@
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(120deg, transparent, rgba(79,127,255,0.9), transparent);
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     animation: borderSweep 3.5s linear infinite;
@@ -156,11 +139,12 @@
     pointer-events: none;
   }
 
+  /* Grid — brighter lines, tighter spacing for more presence */
   .bg-grid {
     background-image:
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 28px 28px;
+      linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px);
+    background-size: 32px 32px;
   }
 
   .line-clamp-3 {
@@ -172,11 +156,11 @@
 }
 
 @keyframes borderSweep {
-  0% { transform: translateX(-45%); }
-  100% { transform: translateX(45%); }
+  0%   { transform: translateX(-45%); }
+  100% { transform: translateX(45%);  }
 }
 
 @keyframes pulseFloat {
   0%, 100% { transform: translateY(0px); opacity: 0.7; }
-  50% { transform: translateY(-4px); opacity: 1; }
+  50%       { transform: translateY(-4px); opacity: 1; }
 }

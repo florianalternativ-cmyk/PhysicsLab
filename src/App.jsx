@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Menu, X, Atom, ChevronRight, PanelLeftClose, PanelLeftOpen, BookOpen, Search, Home } from 'lucide-react';
 
-import LandingPage from './components/LandingPage';
-import ParticleField from './components/ParticleField';
-import { MODULES } from './simulations';
+import LandingPage    from './components/LandingPage';
+import ParticleField  from './components/ParticleField';
+import MouseSpotlight from './components/MouseSpotlight';
+import { MODULES }    from './simulations';
 
 function normalise(str) {
   return str
@@ -31,13 +32,13 @@ function HighlightMatch({ text, query }) {
 }
 
 export default function PhysicsLab() {
-  const [activeModuleId, setActiveModuleId] = useState(null);
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showInfoPanel, setShowInfoPanel] = useState(true);
-  const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [isHeaderCondensed, setHeaderCondensed] = useState(false);
+  const [activeModuleId, setActiveModuleId]   = useState(null);
+  const [isSidebarOpen,  setSidebarOpen]       = useState(true);
+  const [isMobileMenuOpen, setMobileMenuOpen]  = useState(false);
+  const [showInfoPanel,  setShowInfoPanel]     = useState(true);
+  const [query,          setQuery]             = useState('');
+  const [activeCategory, setActiveCategory]    = useState(null);
+  const [isHeaderCondensed, setHeaderCondensed]= useState(false);
 
   const searchInputRef = useRef(null);
 
@@ -54,7 +55,7 @@ export default function PhysicsLab() {
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (query) params.set('q', query);
+    if (query)          params.set('q',   query);
     if (activeCategory) params.set('cat', activeCategory);
     if (activeModuleId) params.set('sim', activeModuleId);
     const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
@@ -63,7 +64,7 @@ export default function PhysicsLab() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('q')) setQuery(params.get('q'));
+    if (params.get('q'))   setQuery(params.get('q'));
     if (params.get('cat')) setActiveCategory(params.get('cat'));
     if (params.get('sim')) setActiveModuleId(params.get('sim'));
   }, []);
@@ -108,7 +109,7 @@ export default function PhysicsLab() {
   }, []);
 
   const activeModule = MODULES.find(m => m.id === activeModuleId);
-  const hasFilter = query.trim() !== '' || activeCategory !== null;
+  const hasFilter    = query.trim() !== '' || activeCategory !== null;
 
   useEffect(() => {
     document.title = activeModule ? `${activeModule.title} – PhysikLab` : 'PhysikLab';
@@ -116,13 +117,20 @@ export default function PhysicsLab() {
 
   return (
     <div className="fixed inset-0 w-full h-full bg-[var(--bg-deep)] text-[var(--text-primary)] overflow-hidden flex flex-col">
+
+      {/* ── Global background layers (pointer-events:none) ────────────────── */}
+      <div className="absolute inset-0 bg-grid" />
+      <MouseSpotlight />
       <div className="absolute inset-0 pointer-events-none">
-        <ParticleField className="absolute inset-0 opacity-70" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(79,127,255,0.06),transparent_28%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,8,0.22),rgba(5,5,8,0.78))]" />
+        <ParticleField className="absolute inset-0 opacity-50" />
+        {/* subtle dark vignette so edges stay dark */}
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(ellipse 120% 80% at center, transparent 40%, rgba(5,5,8,0.72) 100%)'
+        }} />
       </div>
 
-      <div className={`pointer-events-none absolute top-4 left-0 right-0 z-30 px-4 transition-all duration-300 ${isHeaderCondensed ? 'translate-y-0' : ''}`}>
+      {/* ── Floating header ────────────────────────────────────────── */}
+      <div className={`pointer-events-none absolute top-4 left-0 right-0 z-30 px-4 transition-all duration-300`}>
         <div className={`pointer-events-auto max-w-5xl mx-auto rounded-full floating-shell transition-all duration-300 ${isHeaderCondensed ? 'px-3 py-2' : 'px-4 py-2.5'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -174,12 +182,23 @@ export default function PhysicsLab() {
         </div>
       </div>
 
+      {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden relative pt-20">
         {isMobileMenuOpen && (
           <div className="fixed inset-0 bg-black/70 z-40 lg:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
         )}
 
-        <aside className={`fixed lg:static inset-y-0 left-0 z-50 bg-[rgba(13,13,20,0.92)] border-r border-white/6 transform transition-all duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-none backdrop-blur-xl ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:transform-none lg:translate-x-0 ${isSidebarOpen ? 'lg:w-72' : 'lg:w-0 lg:border-r-0 lg:overflow-hidden'} w-72`}>
+        {/* Sidebar */}
+        <aside className={`
+          fixed lg:static inset-y-0 left-0 z-50
+          bg-[rgba(8,8,14,0.90)] border-r border-white/6
+          transform transition-all duration-300 ease-in-out
+          flex flex-col shadow-2xl lg:shadow-none backdrop-blur-2xl
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:transform-none lg:translate-x-0
+          ${isSidebarOpen ? 'lg:w-72' : 'lg:w-0 lg:border-r-0 lg:overflow-hidden'}
+          w-72
+        `}>
           <div className="w-72 px-3 pt-4 pb-3 border-b border-white/6 shrink-0 space-y-2">
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
@@ -197,22 +216,25 @@ export default function PhysicsLab() {
                 </button>
               )}
             </div>
-
             <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => setActiveCategory(null)}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${activeCategory === null ? 'border-[var(--accent)] text-white bg-[rgba(79,127,255,0.14)]' : 'border-white/8 text-[var(--text-muted)] bg-white/[0.03] hover:text-white hover:border-white/16'}`}
-              >
-                Alle
-              </button>
+                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                  activeCategory === null
+                    ? 'border-[var(--accent)] text-white bg-[rgba(79,127,255,0.14)]'
+                    : 'border-white/8 text-[var(--text-muted)] bg-white/[0.03] hover:text-white hover:border-white/16'
+                }`}
+              >Alle</button>
               {ALL_CATEGORIES.map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(prev => prev === cat ? null : cat)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${activeCategory === cat ? 'border-[var(--accent)] text-white bg-[rgba(79,127,255,0.14)]' : 'border-white/8 text-[var(--text-muted)] bg-white/[0.03] hover:text-white hover:border-white/16'}`}
-                >
-                  {cat}
-                </button>
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                    activeCategory === cat
+                      ? 'border-[var(--accent)] text-white bg-[rgba(79,127,255,0.14)]'
+                      : 'border-white/8 text-[var(--text-muted)] bg-white/[0.03] hover:text-white hover:border-white/16'
+                  }`}
+                >{cat}</button>
               ))}
             </div>
           </div>
@@ -220,7 +242,7 @@ export default function PhysicsLab() {
           <div className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 w-72 custom-scrollbar">
             <div className="px-3 mb-2 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.18em] flex items-center justify-between">
               <span>Bibliothek</span>
-              <span className={`${hasFilter ? 'text-[var(--accent-strong)]' : 'text-[var(--text-muted)]'}`}>
+              <span className={hasFilter ? 'text-[var(--accent-strong)]' : 'text-[var(--text-muted)]'}>
                 {filteredModules.length}/{MODULES.length}
               </span>
               <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden text-[var(--text-muted)]"><X size={16} /></button>
@@ -229,18 +251,22 @@ export default function PhysicsLab() {
             {filteredModules.length === 0 ? (
               <div className="px-3 py-8 text-center">
                 <p className="text-[var(--text-muted)] text-sm mb-3">Keine Simulationen gefunden.</p>
-                <button onClick={clearSearch} className="text-xs text-[var(--accent-strong)] hover:text-white underline underline-offset-2">
-                  Filter zurücksetzen
-                </button>
+                <button onClick={clearSearch} className="text-xs text-[var(--accent-strong)] hover:text-white underline underline-offset-2">Filter zurücksetzen</button>
               </div>
             ) : (
-              filteredModules.map((module) => (
+              filteredModules.map(module => (
                 <button
                   key={module.id}
                   onClick={() => handleSelectModule(module.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-sm transition-all duration-150 group ${activeModuleId === module.id ? 'bg-white/[0.06] text-white border border-white/10' : 'text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white border border-transparent'}`}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-sm transition-all duration-150 group ${
+                    activeModuleId === module.id
+                      ? 'bg-white/[0.06] text-white border border-white/10'
+                      : 'text-[var(--text-secondary)] hover:bg-white/[0.04] hover:text-white border border-transparent'
+                  }`}
                 >
-                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${activeModuleId === module.id ? 'bg-white/[0.06]' : 'bg-black/20 group-hover:bg-white/[0.04]'}`}>
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                    activeModuleId === module.id ? 'bg-white/[0.06]' : 'bg-black/20 group-hover:bg-white/[0.04]'
+                  }`}>
                     <module.icon size={16} className={activeModuleId === module.id ? module.color : 'text-[var(--text-muted)] group-hover:text-white'} />
                   </div>
                   <div className="flex-1 text-left min-w-0">
@@ -254,14 +280,13 @@ export default function PhysicsLab() {
           </div>
         </aside>
 
+        {/* Main content */}
         <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
           {!activeModuleId ? (
             <LandingPage
               onSelect={handleSelectModule}
-              query={query}
-              setQuery={setQuery}
-              activeCategory={activeCategory}
-              setActiveCategory={setActiveCategory}
+              query={query}             setQuery={setQuery}
+              activeCategory={activeCategory} setActiveCategory={setActiveCategory}
               filteredModules={filteredModules}
               allCategories={ALL_CATEGORIES}
               clearSearch={clearSearch}
@@ -269,12 +294,16 @@ export default function PhysicsLab() {
             />
           ) : (
             <div className="flex-1 flex flex-col lg:flex-row h-full w-full overflow-hidden px-3 pb-3 gap-3">
-              <div className={`relative flex flex-col min-h-0 order-1 transition-all duration-300 ${showInfoPanel ? 'lg:flex-1 h-[60%] lg:h-full' : 'flex-1 h-full'} glass-panel rounded-[28px] overflow-hidden`}>
+              <div className={`relative flex flex-col min-h-0 order-1 transition-all duration-300 ${
+                showInfoPanel ? 'lg:flex-1 h-[60%] lg:h-full' : 'flex-1 h-full'
+              } glass-panel rounded-[28px] overflow-hidden`}>
                 <div className="flex-1 relative w-full h-full min-h-0">
                   <activeModule.component />
                 </div>
               </div>
-              <div className={`glass-panel rounded-[28px] flex flex-col shrink-0 z-10 order-2 transition-all duration-300 ease-in-out overflow-hidden ${showInfoPanel ? 'h-[40%] lg:h-full w-full lg:w-80 opacity-100' : 'h-0 lg:h-full lg:w-0 opacity-0 pointer-events-none'}`}>
+              <div className={`glass-panel rounded-[28px] flex flex-col shrink-0 z-10 order-2 transition-all duration-300 ease-in-out overflow-hidden ${
+                showInfoPanel ? 'h-[40%] lg:h-full w-full lg:w-80 opacity-100' : 'h-0 lg:h-full lg:w-0 opacity-0 pointer-events-none'
+              }`}>
                 <div className="flex-1 overflow-y-auto p-6 custom-scrollbar w-full lg:w-80">
                   <div className="flex items-center gap-2 mb-4">
                     <span className={`px-2 py-1 bg-white/[0.04] ${activeModule.color} text-[10px] font-semibold uppercase rounded-full border border-white/8`}>
