@@ -1,8 +1,8 @@
 # PhysikLab
 
-Eine interaktive Sammlung von Physik-Simulationen für den Browser. Neun Module aus
-Wellenlehre, Akustik, Mechanik und Chaostheorie lassen sich in Echtzeit über Schieberegler
-und direkte Maus- bzw. Touch-Eingabe verändern.
+Eine interaktive Sammlung von Physik-Simulationen für den Browser. Zehn Module aus
+Wellenlehre, Akustik, Mechanik, Schwingungslehre und Chaostheorie lassen sich in Echtzeit
+über Schieberegler und direkte Maus- bzw. Touch-Eingabe verändern.
 
 Alle Simulationen sind von Hand gerechnet und auf ein `<canvas>` gezeichnet – es kommt
 keine fertige Physik- oder Grafik-Engine zum Einsatz.
@@ -12,24 +12,24 @@ keine fertige Physik- oder Grafik-Engine zum Einsatz.
 | Modul | Themengebiet | Was passiert |
 | --- | --- | --- |
 | **Interferenz** | Wellenlehre | Überlagerung zweier punktförmiger Wellenquellen. Für jedes Pixel wird die Summe beider Sinuswellen berechnet, sodass konstruktive und destruktive Interferenz als Muster sichtbar werden. Beide Quellen lassen sich frei verschieben; Frequenz, Amplitude und Phasenverschiebung sind einstellbar. |
-| **Wellenwanne** | Wellenoptik | Numerische Lösung der 2D-Wellengleichung auf einem Gitter (Finite-Differenzen mit Dämpfung). Per Klick entstehen Störungen oder Wände. Das Preset „Spalt" baut eine Barriere mit Öffnung und zeigt damit Beugung, Reflexion und das Huygenssche Prinzip. |
+| **Wellenwanne** | Wellenoptik | Numerische Lösung der 2D-Wellengleichung auf einem Gitter (Finite-Differenzen mit Dämpfung). Per Klick entstehen Störungen oder Wände. Das Preset „Spalt“ baut eine Barriere mit Öffnung und zeigt damit Beugung, Reflexion und das Huygenssche Prinzip. |
 | **Phasoren** | Akustik | Schwebung, erklärt über rotierende Zeiger: zwei Phasoren, ihre Vektorsumme und die zugehörigen drei Zeitverläufe (Welle 1, Welle 2, Summe). Eine gestrichelte Projektion verbindet die Zeigerspitze mit der Summenkurve. |
-| **Gitarren-Tuner** | Akustik | Zwei Oszillatoren (300–500 Hz) über die Web Audio API – die Schwebung ist hier tatsächlich *hörbar*. Das Canvas zeigt die Summenschwingung in einem 0,2-s-Fenster samt Hüllkurve, analog zum Stimmen zweier Saiten gegeneinander. |
+| **Gitarren-Tuner** | Akustik | Zwei Oszillatoren (300–500 Hz) über die Web Audio API – die Schwebung ist hier tatsächlich *hörbar*. Das Canvas zeigt die Summenschwingung in einem 0,2-s-Fenster samt Hüllkurve, analog zum Stimmen zweier Saiten gegeneinander. |
 | **Elastischer Stoß** | Mechanik | Partikelsystem unter konstanter Gravitation. Die Kugeln stoßen mit einem einstellbaren Restitutionskoeffizienten gegen Boden und Seitenwände – von stark gedämpft bis energiegewinnend. Per Klick kommen neue Kugeln dazu. |
 | **Doppelpendel** | Chaos | Die Bewegungsgleichungen des Doppelpendels, Schritt für Schritt integriert. Die Bahn der unteren Masse wird nachgezeichnet und macht das chaotische Verhalten sichtbar. Beide Massen lassen sich mit der Maus in eine neue Startlage ziehen. |
-| **Lissajous** | Schwingungen | Lissajous-Figuren aus der Überlagerung zweier harmonischer Schwingungen: `x = sin(a·t + δ)`, `y = sin(b·t)`. Frequenzverhältnis, Phasenlage und Animationsgeschwindigkeit sind regelbar. |
+| **Lissajous** | Schwingungen | Lissajous-Figuren aus der Überlagerung zweier harmonischer Schwingungen: `x = sin(a·t + δ)`, `y = sin(b·t)`. Frequenzverhältnis, Phasenlage und Animationsgeschwindigkeit sind regelbar. |
 | **Fourier-Synthese** | Schwingungen | Addiere bis zu 8 harmonische Obertöne mit individueller Amplitude und Phase. Rotierende Phasor-Kette, Wellenform-Verlauf aller Harmonischen und Echtzeit-Spektrum-Balkendiagramm. Presets für Sinus, Rechteck, Sägezahn und Dreieck. |
-| **Lorenz-Attraktor** | Chaos | Das Lorenz-System numerisch integriert (Runge-Kutta 4. Ordnung, 6 Schritte pro Frame). Bis zu vier Trajektorien mit minimal versetzten Anfangsbedingungen machen den Schmetterlingseffekt sichtbar – zunächst kohärent, dann exponentiell divergierend. Der Attraktor lässt sich per Maus oder Touch frei im Raum rotieren (3-D-Projektion ohne Engine). σ, ρ und β sind live einstellbar; ein HUD zeigt den Abstand der ersten zwei Trajektorien und klassifiziert den Systemzustand als KOHÄRENT, DIVERGIERT oder CHAOTISCH. |
+| **Lorenz-Attraktor** | Chaos | Das Lorenz-System numerisch integriert (Runge-Kutta 4. Ordnung, 6 Schritte pro Frame). Bis zu vier Trajektorien mit minimal versetzten Anfangsbedingungen machen den Schmetterlingseffekt sichtbar – zunächst kohärent, dann exponentiell divergierend. Der Attraktor lässt sich per Maus oder Touch frei im Raum rotieren (3-D-Projektion ohne Engine). σ, ρ und β sind live einstellbar; ein HUD zeigt den Abstand der ersten zwei Trajektorien und klassifiziert den Systemzustand als KOHÄRENT, DIVERGIERT oder CHAOTISCH. |
+| **N-Körper-Gravitation** | Mechanik | N-Körper-Gravitationssimulation mit symplektischem Leapfrog-Integrator (Velocity-Verlet, Kick-Drift-Kick). Gedämpfte Gravitation über softened inverse-square law verhindert Singularitäten bei Nahänderungen. Drei wissenschaftlich präzise Presets: die exakte Figur-8-Dreikörperlösung (Chenciner–Montgomery 2000), ein Doppelsternsystem mit Testplanet sowie ein Sonnensystem mit Keplerschen Kreisbahngeschwindigkeiten. Neue Körper spawnen per Klick (ruhend) oder Klick-Ziehen (Pfeil setzt Startgeschwindigkeit). Overlays für Bahnen, Geschwindigkeitspfeile, Kraftpfeile und Massenmittelpunkt einzeln zuschaltbar. Echtzeit-HUD für kinetische Energie, potenzielle Energie, Gesamtenergie und Energiedrift in Prozent. |
 
 Alle Module sind responsiv: Über einen `ResizeObserver` wird die Canvas-Auflösung an die
-Fenstergröße angepasst, und die Wellen- sowie Wellenwannen-Simulation reagieren auch auf
-Touch-Eingaben.
+Fenstergröße angepasst, und mehrere Simulationen unterstützen Touch-Eingaben.
 
 ## Tech-Stack
 
-- **React 19** – Funktionskomponenten und Hooks
-- **Vite 8** – Dev-Server und Build
-- **Tailwind CSS 4** – Styling, eingebunden über `@tailwindcss/vite`
+- **React 19** – Funktionskomponenten und Hooks
+- **Vite 8** – Dev-Server und Build
+- **Tailwind CSS 4** – Styling, eingebunden über `@tailwindcss/vite`
 - **lucide-react** – Icons
 - **Canvas 2D API** – die komplette Darstellung aller Simulationen
 - **Web Audio API** – Tonerzeugung im Gitarren-Tuner
@@ -61,7 +61,8 @@ PhysicsLab/
         ├── DoublePendulum.jsx        Chaotisches Doppelpendel
         ├── Lissajous.jsx             Lissajous-Figuren
         ├── FourierSynthesis.jsx      Fourier-Synthese mit Phasoren und Spektrum
-        └── LorenzAttractor.jsx       Lorenz-Attraktor mit RK4, 3-D-Projektion und Chaos-Indikator
+        ├── LorenzAttractor.jsx       Lorenz-Attraktor, RK4, 3-D-Projektion, Chaos-Indikator
+        └── NBodyGravity.jsx          N-Körper-Gravitation, Leapfrog, Figur-8-Preset, Energie-HUD
 ```
 
 Ein neues Modul lässt sich hinzufügen, indem man eine Komponente unter `src/simulations/`
